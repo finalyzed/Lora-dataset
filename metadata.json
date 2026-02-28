@@ -1,0 +1,5 @@
+{
+  "name": "LoRA Dataset Architect",
+  "description": "An intelligent dataset curation and captioning tool for training LoRA models. Features face-aware smart cropping, automated outlier detection, and advanced captioning generation.",
+  "requestFramePermissions": []
+}
