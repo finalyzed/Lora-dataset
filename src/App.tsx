@@ -4,7 +4,6 @@ import { UploadCloud, Image as ImageIcon, CheckCircle, AlertTriangle, Settings, 
 import { processImage } from "./utils/imageProcessing";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { GoogleGenAI } from "@google/genai";
 
 type ProcessedImage = {
   id: string;
@@ -39,36 +38,6 @@ const MODEL_INFO: Record<string, string> = {
   "Wan 2.1": "Wan 2.1 Lite model. Reliable and well-supported by most local training scripts.",
 };
 
-const generateCaptionWithRetry = async (ai: GoogleGenAI, base64data: string, mimeType: string, prompt: string, maxRetries = 3) => {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            inlineData: {
-              data: base64data.split(",")[1],
-              mimeType: mimeType,
-            },
-          },
-          { text: prompt },
-        ],
-      });
-      return response.text || "";
-    } catch (err: any) {
-      const isRateLimit = err?.status === 429 || err?.message?.includes("429") || err?.status === "RESOURCE_EXHAUSTED" || err?.message?.includes("RESOURCE_EXHAUSTED");
-      if (isRateLimit && attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 2000; // 2s, 4s
-        console.warn(`Rate limit hit. Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        throw err;
-      }
-    }
-  }
-  return "";
-};
-
 export default function App() {
   const [step, setStep] = useState<number>(1);
   const [images, setImages] = useState<ProcessedImage[]>([]);
@@ -76,26 +45,12 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   
-  // API Key State
-  const [apiMode, setApiMode] = useState<"gemini" | "local">(() => {
-    try {
-      return (localStorage.getItem("api_mode") as "gemini" | "local") || "gemini";
-    } catch (e) {
-      return "gemini";
-    }
-  });
+  // API Configuration
   const [localApiUrl, setLocalApiUrl] = useState<string>(() => {
     try {
       return localStorage.getItem("local_api_url") || "http://localhost:8000";
     } catch (e) {
       return "http://localhost:8000";
-    }
-  });
-  const [apiKey, setApiKey] = useState<string>(() => {
-    try {
-      return localStorage.getItem("gemini_api_key") || "";
-    } catch (e) {
-      return "";
     }
   });
   const [showSettings, setShowSettings] = useState(false);
@@ -153,25 +108,6 @@ export default function App() {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setApiKey(val);
-    try {
-      localStorage.setItem("gemini_api_key", val);
-    } catch (err) {
-      console.warn("Could not save to localStorage", err);
-    }
-  };
-
-  const handleApiModeChange = (mode: "gemini" | "local") => {
-    setApiMode(mode);
-    try {
-      localStorage.setItem("api_mode", mode);
-    } catch (err) {
-      console.warn("Could not save to localStorage", err);
-    }
-  };
-
   const handleLocalApiUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setLocalApiUrl(val);
@@ -217,26 +153,21 @@ export default function App() {
         
         let caption = "";
         
-        if (apiMode === "local") {
-          try {
-            const response = await fetch(`${localApiUrl}/api/caption`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                image: base64data.split(",")[1],
-                prompt: prompt
-              })
-            });
-            if (!response.ok) throw new Error("Local API failed");
-            const data = await response.json();
-            caption = data.caption || "";
-          } catch (err) {
-            console.error("Local API Error:", err);
-            throw err;
-          }
-        } else {
-          const ai = new GoogleGenAI({ apiKey: apiKey || "missing_key" });
-          caption = await generateCaptionWithRetry(ai, base64data, img.processedBlob.type, prompt);
+        try {
+          const response = await fetch(`${localApiUrl}/api/caption`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              image: base64data.split(",")[1],
+              prompt: prompt
+            })
+          });
+          if (!response.ok) throw new Error("Local API failed");
+          const data = await response.json();
+          caption = data.caption || "";
+        } catch (err) {
+          console.error("Local API Error:", err);
+          throw err;
         }
         
         if (triggerWord) {
@@ -307,26 +238,21 @@ export default function App() {
       
       let caption = "";
       
-      if (apiMode === "local") {
-        try {
-          const response = await fetch(`${localApiUrl}/api/caption`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              image: base64data.split(",")[1],
-              prompt: prompt
-            })
-          });
-          if (!response.ok) throw new Error("Local API failed");
-          const data = await response.json();
-          caption = data.caption || "";
-        } catch (err) {
-          console.error("Local API Error:", err);
-          throw err;
-        }
-      } else {
-        const ai = new GoogleGenAI({ apiKey: apiKey || "missing_key" });
-        caption = await generateCaptionWithRetry(ai, base64data, img.processedBlob.type, prompt);
+      try {
+        const response = await fetch(`${localApiUrl}/api/caption`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            image: base64data.split(",")[1],
+            prompt: prompt
+          })
+        });
+        if (!response.ok) throw new Error("Local API failed");
+        const data = await response.json();
+        caption = data.caption || "";
+      } catch (err) {
+        console.error("Local API Error:", err);
+        throw err;
       }
       
       if (triggerWord) {
@@ -365,51 +291,19 @@ export default function App() {
         </div>
         {showSettings && (
           <div className="max-w-7xl mx-auto px-6 py-4 border-t border-zinc-800 bg-zinc-900/80">
-            <div className="max-w-2xl">
+            <div className="max-w-md">
               <h3 className="text-sm font-medium text-zinc-200 mb-4">API Configuration</h3>
-              
-              <div className="flex gap-4 mb-6">
-                <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${apiMode === 'gemini' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'}`}>
-                  <input type="radio" name="apiMode" checked={apiMode === 'gemini'} onChange={() => handleApiModeChange('gemini')} className="text-indigo-500 bg-zinc-900 border-zinc-700 focus:ring-indigo-500" />
-                  <div>
-                    <div className="text-sm font-medium text-zinc-200">Gemini API (Cloud)</div>
-                    <div className="text-xs text-zinc-500">Requires API Key. Fast, no local GPU needed.</div>
-                  </div>
-                </label>
-                <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${apiMode === 'local' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'}`}>
-                  <input type="radio" name="apiMode" checked={apiMode === 'local'} onChange={() => handleApiModeChange('local')} className="text-indigo-500 bg-zinc-900 border-zinc-700 focus:ring-indigo-500" />
-                  <div>
-                    <div className="text-sm font-medium text-zinc-200">Local Python API</div>
-                    <div className="text-xs text-zinc-500">Run Ollama or Transformers locally.</div>
-                  </div>
-                </label>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">Local API URL</label>
+                <input
+                  type="text"
+                  value={localApiUrl}
+                  onChange={handleLocalApiUrlChange}
+                  placeholder="http://localhost:8000"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                />
+                <p className="text-xs text-zinc-500 mt-2">The URL of your local Python captioning server. See README for setup instructions.</p>
               </div>
-
-              {apiMode === 'gemini' ? (
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">Gemini API Key</label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={handleApiKeyChange}
-                    placeholder="AIzaSy..."
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                  />
-                  <p className="text-xs text-zinc-500 mt-2">Required for automated captioning. Saved locally in your browser.</p>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">Local API URL</label>
-                  <input
-                    type="text"
-                    value={localApiUrl}
-                    onChange={handleLocalApiUrlChange}
-                    placeholder="http://localhost:8000"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                  />
-                  <p className="text-xs text-zinc-500 mt-2">The URL of your local Python captioning server. See README for setup instructions.</p>
-                </div>
-              )}
             </div>
           </div>
         )}

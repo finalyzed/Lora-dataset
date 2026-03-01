@@ -2,82 +2,86 @@
 
 A comprehensive tool for cropping, curating, and captioning image datasets for LoRA training.
 
-## Running the Application
-
-You can run this application in two modes:
-1. **Cloud Mode (Gemini API)**: The easiest way. Requires a free Google Gemini API key. No local GPU required.
-2. **Local Mode (Python API)**: Runs completely offline using open-source models like Qwen2-VL or Joy Caption. Requires a powerful local GPU (Nvidia RTX 3060 or better with at least 8GB VRAM).
+This application runs **100% locally** and offline. It uses open-source vision models (like Qwen2-VL) to automatically caption your images, ensuring your data never leaves your computer.
 
 ---
 
-### Method 1: Cloud Mode (Easiest)
+## 🚀 One-Click Install & Setup Guide
 
-If you don't have a powerful GPU or don't want to deal with Python environments, you can use the Gemini API.
+Since this app runs powerful AI models locally, it requires a dedicated Nvidia GPU and a Python environment. Follow these steps carefully to get everything running.
 
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey) and create a free API key.
-2. Open the app, click the **Settings** icon (top right).
-3. Select **Gemini API (Cloud)** and paste your API key.
-4. The app will now use Gemini 2.5 Flash to caption your images automatically.
-
----
-
-### Method 2: Local Mode (Advanced / Offline)
-
-If you want to run the captioning entirely locally using models like **Qwen2.5-VL** or **Joy Caption**, you need to set up a local Python server. The React app will send your images to this local server instead of Google.
-
-#### Prerequisites
+### Prerequisites
 
 1. **Nvidia GPU**: You need an Nvidia GPU with at least 8GB of VRAM (12GB+ recommended).
 2. **Python 3.10 or 3.11**: Download and install from [python.org](https://www.python.org/downloads/).
-   - *Important:* During installation, make sure to check the box that says **"Add Python to PATH"**.
+   - ⚠️ **CRITICAL:** During the Python installation, you **MUST** check the box at the bottom that says **"Add Python to PATH"** before clicking Install.
 3. **Git**: Download and install from [git-scm.com](https://git-scm.com/downloads).
+4. **Node.js**: Download and install from [nodejs.org](https://nodejs.org/) (required to run the user interface).
 
-#### Step 1: Install PyTorch (with CUDA)
+---
 
-Open your terminal (Command Prompt or PowerShell on Windows) and install PyTorch. You need the version that supports your GPU (CUDA).
+### Step 1: Install the Local AI Server (Python)
 
-```bash
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-```
+The AI server handles the heavy lifting of looking at your images and generating captions.
 
-#### Step 2: Install Required Python Packages
+1. Open your terminal (Command Prompt or PowerShell on Windows).
+2. Navigate to the folder where you extracted this project.
+3. Install PyTorch with CUDA support (this allows Python to use your Nvidia GPU):
+   ```bash
+   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+   ```
+4. Install the required AI libraries:
+   ```bash
+   pip install fastapi uvicorn transformers pillow accelerate qwen-vl-utils
+   ```
 
-Next, install the libraries required to run the local API server and load the AI models:
+### Step 2: Start the AI Server
 
-```bash
-pip install fastapi uvicorn transformers pillow accelerate qwen-vl-utils
-```
-
-#### Step 3: Download the Model (Automatic)
-
-You don't need to manually download the model files from a website. The `transformers` library will automatically download the required files the first time you run the script and cache them on your hard drive (usually in `C:\Users\YourName\.cache\huggingface`).
-
-The provided `local_caption_server.py` script uses `Qwen/Qwen2-VL-7B-Instruct` by default, which is an extremely powerful open-source vision model.
-
-*Note: The initial download is about 15GB, so it may take a while depending on your internet speed.*
-
-#### Step 4: Run the Local Server
-
-In your terminal, navigate to the folder where you saved this project, and run the Python script:
+In the same terminal, run the following command to start the AI server:
 
 ```bash
 python local_caption_server.py
 ```
 
-You should see output indicating that the model is downloading/loading. Once it says `Application startup complete`, the server is running on `http://localhost:8000`.
+**What happens next?**
+- The first time you run this, it will automatically download the `Qwen2-VL-7B-Instruct` model. 
+- You do **not** need to manually download any files from HuggingFace or figure out where to put them. The script handles it automatically!
+- *Note: The download is about 15GB, so it may take a while depending on your internet speed.*
+- Once it finishes downloading and loading into your GPU, you will see a message saying: `Uvicorn running on http://0.0.0.0:8000`. Leave this terminal window open!
 
-#### Step 5: Connect the App to your Local Server
+### Step 3: Start the User Interface (React)
 
-1. Open the React app in your browser.
-2. Click the **Settings** icon (top right).
-3. Select **Local Python API**.
-4. Ensure the **Local API URL** is set to `http://localhost:8000`.
-5. Close the settings and start captioning! The app will now send images to your local Python script.
+Now that the AI server is running in the background, you need to start the visual app.
+
+1. Open a **new** terminal window (keep the Python one running).
+2. Navigate to the project folder again.
+3. Install the UI dependencies:
+   ```bash
+   npm install
+   ```
+4. Start the UI:
+   ```bash
+   npm run dev
+   ```
+5. Open your web browser and go to `http://localhost:3000`.
 
 ---
 
-### Troubleshooting Local Mode
+## ⚙️ App Configuration
 
-- **"CUDA out of memory"**: Your GPU doesn't have enough VRAM to load the 7B parameter model. You can try loading a smaller model (like a 2B parameter model) by changing the `MODEL_ID` in `local_caption_server.py` to `"Qwen/Qwen2-VL-2B-Instruct"`.
-- **"Connection Refused" / "Local API failed"**: Ensure the Python script is actually running in your terminal and hasn't crashed. Ensure the URL in the app settings exactly matches the URL printed in the terminal (usually `http://0.0.0.0:8000` or `http://localhost:8000`).
-- **Missing modules**: If Python complains about missing modules (e.g., `ModuleNotFoundError: No module named 'fastapi'`), ensure you ran the `pip install` commands in the same environment where you are running the script.
+1. In the web app, click the **Settings** gear icon in the top right corner.
+2. Ensure the **Local API URL** is set to `http://localhost:8000` (this tells the UI where to find your Python server).
+3. Close the settings. You are now ready to drag and drop your images and start captioning!
+
+---
+
+## 🛠️ Troubleshooting
+
+- **"CUDA out of memory"**: Your GPU doesn't have enough VRAM to load the 7B parameter model. 
+  - *Fix:* Open `local_caption_server.py` in a text editor. Change `MODEL_ID = "Qwen/Qwen2-VL-7B-Instruct"` to `MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"`. Save the file and restart the Python server. The 2B model is much smaller and fits on almost any GPU.
+- **"Connection Refused" / "Local API failed" in the web app**: 
+  - *Fix:* This means the web app can't talk to the Python server. Ensure the Python script is actually running in your other terminal window and hasn't crashed. Ensure the URL in the app settings exactly matches `http://localhost:8000`.
+- **"pip is not recognized as an internal or external command"**: 
+  - *Fix:* You forgot to check the "Add Python to PATH" box when installing Python. Re-run the Python installer, select "Modify", and check that box.
+- **"ModuleNotFoundError: No module named 'fastapi'"**: 
+  - *Fix:* You didn't run the `pip install` commands, or you ran them in a different environment. Run the installation commands from Step 1 again.
