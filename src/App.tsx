@@ -165,9 +165,17 @@ export default function App() {
     setIsColorGrading(false);
   };
 
+  const [captionProgress, setCaptionProgress] = useState<{current: number, total: number}>({current: 0, total: 0});
+
   const handleCaptioning = async () => {
     setIsCaptioning(true);
     const updatedImages = [...images];
+    
+    // Calculate total valid images to caption
+    const validImagesCount = updatedImages.filter(img => !(img.score !== undefined && img.score < curationThreshold && !img.ignored)).length;
+    setCaptionProgress({ current: 0, total: validImagesCount });
+    
+    let processedCount = 0;
     
     for (let i = 0; i < updatedImages.length; i++) {
       const img = updatedImages[i];
@@ -208,6 +216,9 @@ export default function App() {
         }
         img.caption = caption;
         
+        processedCount++;
+        setCaptionProgress({ current: processedCount, total: validImagesCount });
+        
         // Add a small delay between requests to avoid hitting rate limits too quickly
         if (i < updatedImages.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -215,6 +226,8 @@ export default function App() {
       } catch (err) {
         console.error("Captioning failed", err);
         img.caption = triggerWord ? `${triggerWord}, failed to generate caption` : "failed to generate caption";
+        processedCount++;
+        setCaptionProgress({ current: processedCount, total: validImagesCount });
       }
     }
     
@@ -743,7 +756,9 @@ export default function App() {
                   className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 >
                   {isCaptioning ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                  {isCaptioning ? "Generating Captions..." : "Start Captioning"}
+                  {isCaptioning 
+                    ? `Generating Captions (${captionProgress.current}/${captionProgress.total})...` 
+                    : "Start Captioning"}
                 </button>
               </div>
             </div>
