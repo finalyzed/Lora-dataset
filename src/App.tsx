@@ -50,9 +50,9 @@ export default function App() {
   // API Configuration
   const [localApiUrl, setLocalApiUrl] = useState<string>(() => {
     try {
-      return localStorage.getItem("local_api_url") || "http://localhost:8000";
+      return localStorage.getItem("local_api_url") || "http://127.0.0.1:8000";
     } catch (e) {
-      return "http://localhost:8000";
+      return "http://127.0.0.1:8000";
     }
   });
   const [showSettings, setShowSettings] = useState(false);
@@ -104,7 +104,6 @@ export default function App() {
     
     setImages((prev) => [...prev, ...newImages]);
     setIsProcessing(false);
-    setStep(2);
   }, [resolution]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -166,9 +165,11 @@ export default function App() {
   };
 
   const [captionProgress, setCaptionProgress] = useState<{current: number, total: number}>({current: 0, total: 0});
+  const [currentCaptionPreview, setCurrentCaptionPreview] = useState<{url: string, caption: string} | null>(null);
 
   const handleCaptioning = async () => {
     setIsCaptioning(true);
+    setCurrentCaptionPreview(null);
     const updatedImages = [...images];
     
     // Calculate total valid images to caption
@@ -218,6 +219,7 @@ export default function App() {
         
         processedCount++;
         setCaptionProgress({ current: processedCount, total: validImagesCount });
+        setCurrentCaptionPreview({ url: img.processedUrl, caption: img.caption });
         
         // Add a small delay between requests to avoid hitting rate limits too quickly
         if (i < updatedImages.length - 1) {
@@ -345,7 +347,7 @@ export default function App() {
                   type="text"
                   value={localApiUrl}
                   onChange={handleLocalApiUrlChange}
-                  placeholder="http://localhost:8000"
+                  placeholder="http://127.0.0.1:8000"
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500"
                 />
                 <p className="text-xs text-zinc-500 mt-2">The URL of your local Python captioning server. See README for setup instructions.</p>
@@ -748,6 +750,16 @@ export default function App() {
                   </label>
                 </div>
               </div>
+              
+              {isCaptioning && currentCaptionPreview && (
+                <div className="mt-6 p-4 bg-zinc-950 border border-zinc-800 rounded-xl flex gap-4 items-start">
+                  <img src={currentCaptionPreview.url} alt="Preview" className="w-24 h-24 object-cover rounded-lg border border-zinc-800" />
+                  <div className="flex-1">
+                    <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Live Preview</h4>
+                    <p className="text-sm text-zinc-300 leading-relaxed">{currentCaptionPreview.caption}</p>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-6 border-t border-zinc-800 flex justify-end">
                 <button

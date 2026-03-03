@@ -24,19 +24,46 @@ IF %ERRORLEVEL% NEQ 0 (
     exit /b
 )
 
-echo [1/3] Installing Python dependencies (this may take a while)...
+echo [1/4] Setting up Python Virtual Environment...
+IF NOT EXIST "venv" (
+    python -m venv venv
+    IF %ERRORLEVEL% NEQ 0 (
+        echo [ERROR] Failed to create virtual environment.
+        pause >nul
+        exit /b
+    )
+)
+call venv\Scripts\activate
+
+echo.
+echo [2/4] Installing Python dependencies (this may take a while)...
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+IF %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Failed to install PyTorch.
+    pause >nul
+    exit /b
+)
 pip install fastapi uvicorn transformers pillow accelerate qwen-vl-utils
+IF %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Failed to install Python dependencies.
+    pause >nul
+    exit /b
+)
 
 echo.
-echo [2/3] Installing User Interface dependencies...
+echo [3/4] Installing User Interface dependencies...
 call npm install
+IF %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Failed to install Node.js dependencies.
+    pause >nul
+    exit /b
+)
 
 echo.
-echo [3/3] Starting the servers...
+echo [4/4] Starting the servers...
 echo.
 echo Starting Python AI Server in a new window...
-start cmd /k "title AI Caption Server && echo Starting AI Server... && python local_caption_server.py"
+start cmd /k "title AI Caption Server && call venv\Scripts\activate && echo Starting AI Server... && python local_caption_server.py"
 
 echo Starting React UI Server...
 echo Once it says "ready", open your browser to http://localhost:5173 (or the URL shown below)

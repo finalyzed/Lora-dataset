@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 echo "==================================================="
 echo "LoRA Dataset Architect - One-Click Installer & Runner"
 echo "==================================================="
@@ -20,16 +22,22 @@ then
     exit 1
 fi
 
-echo "[1/3] Installing Python dependencies..."
+echo "[1/4] Setting up Python Virtual Environment..."
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
+fi
+source venv/bin/activate
+
+echo "[2/4] Installing Python dependencies..."
 pip3 install torch torchvision torchaudio
 pip3 install fastapi uvicorn transformers pillow accelerate qwen-vl-utils
 
 echo ""
-echo "[2/3] Installing User Interface dependencies..."
+echo "[3/4] Installing User Interface dependencies..."
 npm install
 
 echo ""
-echo "[3/3] Starting the servers..."
+echo "[4/4] Starting the servers..."
 echo "Starting Python AI Server in the background..."
 python3 local_caption_server.py &
 PYTHON_PID=$!

@@ -6,6 +6,16 @@ This application runs **100% locally** and offline. It uses open-source vision m
 
 ---
 
+## 📸 Screenshots
+
+*(Add your screenshots here! Just drag and drop images into GitHub while editing this file to upload them.)*
+
+![Screenshot 1 Placeholder](https://via.placeholder.com/800x400.png?text=Step+1:+Import+and+Crop)
+![Screenshot 2 Placeholder](https://via.placeholder.com/800x400.png?text=Step+2:+Curate+and+Color+Grade)
+![Screenshot 3 Placeholder](https://via.placeholder.com/800x400.png?text=Step+3:+Live+Captioning+with+Qwen2-VL)
+
+---
+
 ## 🚀 The "One-Click" Install & Setup Guide
 
 Since this app runs powerful AI models locally on your own hardware, it requires a dedicated Nvidia GPU and a few basic programs installed on your computer. 
