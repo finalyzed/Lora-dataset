@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, Image as ImageIcon, CheckCircle, AlertTriangle, Settings, Download, Trash2, RefreshCw } from "lucide-react";
+import { UploadCloud, Image as ImageIcon, CheckCircle, AlertTriangle, Settings, Download, Trash2, RefreshCw, Square } from "lucide-react";
 import { processImage } from "./utils/imageProcessing";
 import { applyColorGrade, ColorGradeStyle } from "./utils/colorGrading";
 import JSZip from "jszip";
@@ -71,7 +71,9 @@ export default function App() {
   const [captionFormat, setCaptionFormat] = useState<"tags" | "sentences">("tags");
   const [nsfwEnabled, setNsfwEnabled] = useState(false);
   const [triggerWord, setTriggerWord] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
   const [isCaptioning, setIsCaptioning] = useState(false);
+  const stopCaptioningRef = useRef(false);
 
   // Export State
   const [exportFormat, setExportFormat] = useState<"jpg" | "png">("jpg");
@@ -170,6 +172,7 @@ export default function App() {
   const handleCaptioning = async () => {
     setIsCaptioning(true);
     setCurrentCaptionPreview(null);
+    stopCaptioningRef.current = false;
     const updatedImages = [...images];
     
     // Calculate total valid images to caption
@@ -179,6 +182,10 @@ export default function App() {
     let processedCount = 0;
     
     for (let i = 0; i < updatedImages.length; i++) {
+      if (stopCaptioningRef.current) {
+        break;
+      }
+
       const img = updatedImages[i];
       const isOutlier = img.score !== undefined && img.score < curationThreshold && !img.ignored;
       if (isOutlier) continue; // Skip outliers if they weren't removed
@@ -191,7 +198,10 @@ export default function App() {
           reader.onloadend = () => resolve(reader.result as string);
         });
         
-        const prompt = `Describe this image in ${captionFormat === "tags" ? "comma-separated tags" : "a few descriptive sentences"}. ${nsfwEnabled ? "NSFW content is allowed." : "Keep it SFW."}`;
+        let prompt = `Describe this image in ${captionFormat === "tags" ? "comma-separated tags" : "a few descriptive sentences"}. ${nsfwEnabled ? "NSFW content is allowed." : "Keep it SFW."}`;
+        if (customPrompt.trim()) {
+          prompt += ` Additional instructions: ${customPrompt.trim()}`;
+        }
         
         let caption = "";
         
@@ -235,7 +245,13 @@ export default function App() {
     
     setImages(updatedImages);
     setIsCaptioning(false);
-    setStep(4);
+    if (!stopCaptioningRef.current) {
+      setStep(4);
+    }
+  };
+
+  const handleStopCaptioning = () => {
+    stopCaptioningRef.current = true;
   };
 
   const handleExport = async () => {
@@ -749,6 +765,16 @@ export default function App() {
                     <span className="text-sm text-zinc-300">Enable NSFW Captions</span>
                   </label>
                 </div>
+
+                <div className="md:col-span-2 space-y-3">
+                  <label className="block text-sm font-medium text-zinc-300">Custom Prompt Instructions (Optional)</label>
+                  <textarea
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="e.g. Focus on the clothing and lighting, ignore the background..."
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 min-h-[80px] resize-y"
+                  />
+                </div>
               </div>
               
               {isCaptioning && currentCaptionPreview && (
@@ -761,7 +787,15 @@ export default function App() {
                 </div>
               )}
 
-              <div className="pt-6 border-t border-zinc-800 flex justify-end">
+              <div className="pt-6 border-t border-zinc-800 flex justify-end gap-3">
+                {isCaptioning && (
+                  <button
+                    onClick={handleStopCaptioning}
+                    className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Square className="w-4 h-4 fill-current" /> Stop
+                  </button>
+                )}
                 <button
                   onClick={handleCaptioning}
                   disabled={isCaptioning || images.length === 0}

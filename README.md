@@ -18,6 +18,8 @@ If you've ever trained a LoRA, you know that prepping the dataset is the most te
 
 ### 🆕 What's New in V1.1
 * **Live Captioning Previews:** Watch the AI write captions in real-time! A live preview box shows the exact image being processed alongside the generated text, so you can verify your settings without waiting for the whole dataset to finish.
+* **Custom Prompt Instructions:** You can now give the AI specific instructions on what to focus on or ignore (e.g. "Focus on the clothing and lighting, ignore the background").
+* **Stop Generation Button:** Added a stop button so you can halt the captioning process at any time if you notice the captions aren't coming out right.
 * **Review Before Curation:** The app no longer auto-skips the cropping step. You can now review your cropped grid (and see warnings for low-res images) before moving on.
 * **Smart Python Detection & Isolation:** The startup scripts now automatically hunt for Python 3.10/3.11 and create an isolated Virtual Environment (`venv`). This prevents dependency conflicts with your other AI tools (like ComfyUI) and allows you to keep newer/older global Python versions installed without breaking the app.
 * **Enhanced Security:** The local AI server now strictly binds to `127.0.0.1` to ensure it is not unintentionally exposed to your local network.
